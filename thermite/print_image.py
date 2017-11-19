@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 from thermite.printing import *
 
@@ -9,8 +10,6 @@ assert isinstance(p, UsbPrinter)
 p.connect()
 p.initialize()
 
-h, w = 8, 255
-image = ((np.arange(h * w).reshape((h, w))) % 13) < 3
-
-p.bitimage(image)
-p.feed_line()
+image = cv2.imread('dithered.png', 0)
+p.print_bitimage(image)
+p.feed_lines(10)

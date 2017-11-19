@@ -21,11 +21,52 @@ def u16_to_bytes(num: int):
         raise RuntimeError('Number out of range')
     return num.to_bytes(2, 'little')
 
-def convert_image_columns(image:np.ndarray):
+
+def convert_8lines_columns(image: np.ndarray):
     h, w = image.shape
     if h != 8:
         raise RuntimeError('Image must be eight pixels high')
     return np.packbits(image, axis=None).flatten().tobytes()
+
+
+def convert_image_columns_m0_m1(image: np.ndarray):
+    h, w = image.shape
+    padding = 8 - (h % 8)
+    if padding != 0:
+        image = np.vstack([image, np.zeros((padding, w), dtype=image.dtype)])
+    h, w = image.shape
+    i = 0
+    while i < h:
+        block = image[i:i + 8]
+        yield convert_8lines_columns(block)
+        i += 8
+
+
+def convert_24lines_columns(image: np.ndarray):
+    h, w = image.shape
+    if h != 24:
+        raise RuntimeError('Image must be eight pixels high')
+    out = b''
+    for col in range(w):
+        column = image[:, col]
+        out += np.packbits(column.flat, axis=None).flatten().tobytes()
+    return out
+
+
+def convert_image_columns_m32_m33(image: np.ndarray):
+    block_height = 24
+    h, w = image.shape
+    padding = block_height - (h % block_height)
+    if padding != 0:
+        image = np.vstack([image, np.zeros((padding, w), dtype=image.dtype)])
+    h, w = image.shape
+    xxx = h % block_height
+    i = 0
+    while i < h:
+        block = image[i:i + block_height]
+        yield convert_24lines_columns(block)
+        i += block_height
+
 
 class IThermalPrinter(object):
     """The base interface of all printers.
@@ -100,11 +141,13 @@ class ThermalPrinter(IThermalPrinter):
     def print_stored_image_50(self):
         return self.write(GS + b'(L' + u8_seq([2, 0, 48, 50]))
 
-    def bitimage(self, image: np.ndarray):
-        m = 0
-        data = convert_image_columns(image)
-        head = b'\x1b' + b'*' + u8(m) + u16_to_bytes(len(data))
-        return self.write(head + data)
+    def print_bitimage(self, image: np.ndarray):
+        m = 33
+        inv_image = ~image
+        for data in convert_image_columns_m32_m33(inv_image):
+            head = b'\x1b' + b'*' + u8(m) + u16_to_bytes(len(data) // 3)
+            print(len(data))
+            self.write(head + data + b'\n')
 
     def bitimage_example(self):
         m = 33
@@ -117,7 +160,7 @@ class ThermalPrinter(IThermalPrinter):
             data += u8_seq([16, 32, 64, 128])
             data += u8_seq([64, 32, 16, 8])
             data += u8_seq([4, 2])
-        if m in (32,33):
+        if m in (32, 33):
             data = data * 3
         return self.write(head + data)
 
