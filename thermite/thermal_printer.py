@@ -6,7 +6,10 @@ import numpy as np
 ESC = b'\x1b'
 GS = b'\x1d'
 
-u8 = lambda x: x.to_bytes(1, 'little')
+def u8(x):
+    if x<0 or x>255:
+        raise RuntimeError('Number out of range')
+    return x.to_bytes(1, 'little')
 
 
 def u8_seq(seq):
@@ -146,7 +149,6 @@ class ThermalPrinter(IThermalPrinter):
         inv_image = ~image
         for data in convert_image_columns_m32_m33(inv_image):
             head = b'\x1b' + b'*' + u8(m) + u16_to_bytes(len(data) // 3)
-            print(len(data))
             self.write(head + data + b'\n')
 
     def bitimage_example(self):
@@ -163,6 +165,12 @@ class ThermalPrinter(IThermalPrinter):
         if m in (32, 33):
             data = data * 3
         return self.write(head + data)
+
+    def set_left_margin(self, margin):
+        return self.write(ESC+b'\x6c'+u8(margin))
+
+    def set_right_margin(self, margin):
+        return self.write(ESC+b'Q'+u8(margin))
 
     def initialize(self):
         return self.write(ESC + b'@')

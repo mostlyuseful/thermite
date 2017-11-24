@@ -1,6 +1,9 @@
 import cv2
 import numpy as np
+import sys
 from thermite.printing import *
+
+image = cv2.imread(sys.argv[1], 0)
 
 p = query(UsbPrinter.sniff_devices()).single()
 # or set address manually:
@@ -9,7 +12,6 @@ assert isinstance(p, UsbPrinter)
 
 p.connect()
 p.initialize()
-
-image = cv2.imread('dithered.png', 0)
 p.print_bitimage(image)
 p.feed_lines(10)
+p.initialize()
