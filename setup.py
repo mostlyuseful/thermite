@@ -9,5 +9,6 @@ setup(
     license='MIT',
     long_description=open('README.txt').read(),
     author='Maurice-Pascal Sonnemann',
-    author_email='m@abrightersun.de'
+    author_email='m@abrightersun.de',
+    install_requires=['numpy']
 )
