@@ -1,5 +1,6 @@
 import numpy as np
-from itertools import zip_longest
+from thermite.data_conversion import EncoderParams, encode, grouper
+from itertools import chain
 
 # Step code helps differentiate neighboring lines, even if they contain identical data
 # Format: reflected binary code (grey code), missed steps are obvious
@@ -8,22 +9,7 @@ from itertools import zip_longest
 
 STEP_CODE = [[0, 1], [1, 1]]
 
-
-def grouper(iterable, n, fillvalue=None):
-    """Collect data into fixed-length chunks or blocks"""
-    # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx"
-    args = [iter(iterable)] * n
-    return zip_longest(*args, fillvalue=fillvalue)
-
-
-def encode_manchester(data):
-    pattern_0 = [0, 1]
-    pattern_1 = [1, 0]
-    for value in data:
-        if value:
-            yield from pattern_1
-        else:
-            yield from pattern_0
+ENCODER_PARAMS = EncoderParams(16, 5)
 
 
 def lcg(modulus, a, c, seed):
@@ -67,7 +53,7 @@ class DataEncoder(object):
         return tiled
 
 
-if __name__ == '__main__':
+def old():
     import cv2
 
     e = DataEncoder(block_width=10, line_height=10)
@@ -79,6 +65,24 @@ if __name__ == '__main__':
                 np.clip(255 * ((val / 255.) ** 1.5), 0, 255).astype(np.uint8),
                 np.clip(255 * (((255 - val) / 255.) ** 1.5), 0, 255).astype(np.uint8)]
         tile = e.encode(data)
+        image_tiles.append(tile)
+
+    full_binary = np.vstack(image_tiles)
+    full_image = np.where(full_binary, 255, 0)
+    cv2.imwrite('coded.png', full_image)
+
+
+if __name__ == '__main__':
+    import cv2
+    e = DataEncoder(block_width=10, line_height=10)
+    bytes_per_line = 4
+    image_tiles = []
+    raw_data = 4*list(range(255))
+    enc_data = list(encode(raw_data, ENCODER_PARAMS))
+    flattened = list(chain.from_iterable(block for block in enc_data))
+    image_tiles = []
+    for line in grouper(flattened, bytes_per_line):
+        tile = e.encode(np.asarray([ord(x) for x in line], dtype=np.uint8))
         image_tiles.append(tile)
 
     full_binary = np.vstack(image_tiles)
